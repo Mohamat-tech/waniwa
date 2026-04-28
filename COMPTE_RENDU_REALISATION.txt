@@ -1,0 +1,319 @@
+COMPTE RENDU DE REALISATION - PROJET WANIWA
+
+Dossier projet cree:
+- /home/nect/Zürich
+
+Ce qui a ete fait exactement:
+
+1) Initialisation du projet React
+- Creation du projet avec Vite (template React).
+- Installation des dependances du projet (npm).
+- Le demarrage auto du serveur dev lance par l'assistant Vite a echoue (ENOSPC: limite de file watchers), mais la structure du projet et les dependances ont bien ete creees.
+
+2) Refonte complete de l'application
+- Remplacement integral de src/App.jsx par une implementation modulaire de la plateforme "Zürich".
+- Ajout des composants demandes dans un seul fichier App.jsx:
+  Header, TickerBar, FilterBar, ArticleTop, ArticleRow, Sidebar, NewsroomPage.
+- Ajout des pages placeholder pour:
+  Carte, Donnees, Alertes, Rapports.
+
+3) Fonctionnalites implementees
+- SPA avec navigation interne a 5 sections:
+  Actualites, Carte, Donnees, Alertes, Rapports.
+- Header avec:
+  logo "Zürich", sous-titre sous le nom, navbar, selecteur de langue.
+- Ticker noir en haut avec alertes critiques defilantes.
+- Filtres en chips:
+  Regions (Monde/Afrique/Asie/Ameriques/Europe/Oceanie) et Themes (Tous/Dechets/Air/Eau/Sols).
+- Bloc "A la une":
+  titre style presse (serif), description, meta source/date, niveau d'alerte colore.
+- Liste d'articles:
+  lignes compactes avec vignette, titre, meta, niveau d'alerte en texte colore.
+- Sidebar (200px):
+  indicateurs mondiaux, alertes actives, themes cliquables, boutons export PDF/CSV/Lien.
+- Footer dynamique:
+  "Prochaine actualisation dans Xh Xmin · X sources actives".
+
+4) Donnees simulees
+- Integration de donnees JSON statiques realistes dans App.jsx.
+- Structure des objets article respectee:
+  id, titre, description, source, region, theme, date, niveau, pays, imageUrl.
+- Titres conserves dans leur langue d'origine.
+
+5) Internationalisation (UI)
+- Traductions UI ajoutees pour FR / EN / ES / AR.
+- Traduction de:
+  navbar, filtres, labels, niveaux d'alerte, sections sidebar, placeholders, footer.
+- Support RTL pour l'arabe via l'attribut dir.
+
+6) Style visuel
+- Ajout de src/App.module.css (CSS Modules).
+- Respect du style demande:
+  noir/blanc/gris, sans fond colore fort ni degrade.
+- Typographie:
+  titres d'articles en serif, interface en sans-serif.
+- Niveaux d'alerte affiches uniquement en texte colore (rouge/ambre/bleu/gris).
+
+7) Nettoyage des fichiers de base
+- Suppression de src/App.css (template Vite initial).
+- Simplification de src/index.css pour un reset propre et neutre.
+
+8) Verification technique
+- Lint execute: npm run lint -> OK.
+- Build execute: npm run build -> OK.
+
+Fichiers principaux modifies/crees:
+- src/App.jsx (remplace completement)
+- src/App.module.css (nouveau)
+- src/index.css (mis a jour)
+- src/App.css (supprime)
+
+
+9) Backend Python realise (Flask + SQLite + Scraping + Scheduler)
+- Creation du dossier backend:
+  /home/nect/Zürich/backend
+- Creation des fichiers demandes:
+  requirements.txt, database.py, classifier.py, scraper.py, scheduler.py, app.py
+
+10) Base de donnees SQLite (database.py)
+- Base: zürich.db
+- Tables creees:
+  - articles (id, titre, description, source, region, theme, date, niveau, pays, imageUrl, scraped_at)
+  - stats (id, pollution_index, critical_zones, countries_covered, articles_24h, updated_at)
+  - active_alerts (id, pays, description, niveau, created_at)
+- Fonctions implementees:
+  insert_article, get_articles, get_article_by_id, get_stats, get_alerts,
+  update_stats, count_articles, get_last_scrape_time
+- Recalcul des stats et regeneration automatique des alertes actives (top 3 articles critique/eleve recents).
+
+11) Classification par mots-cles (classifier.py)
+- Fonctions pures implementees:
+  detect_region(text), detect_theme(text), detect_niveau(text, valeur_pm25=None)
+- Normalisation des accents et de la casse pour fiabiliser les matchs.
+- Seuil PM2.5 respecte:
+  >150 critique, >55 eleve, >12 modere, sinon info.
+
+12) Scraping multi-sources (scraper.py)
+- Sources prises en charge:
+  - UNEP News (avec priorite RSS UNEP, fallback page)
+  - Reuters Environment (page officielle + fallback RSS Google News filtre Reuters)
+  - Notre Planete Info (pages actualites detaillees)
+  - OpenAQ v2 (URL demandee) + fallback v3 si necessaire
+- Pour chaque source:
+  timeout=8s, try/except local, logs d'erreur, continuation des autres sources.
+- Transformation article:
+  - id = hashlib.md5(titre.encode("utf-8")).hexdigest()[:12]
+  - classification region/theme/niveau via classifier.py
+  - insertion dedoublonnee via database.py
+- Description normalisee entre 100 et 200 mots.
+
+13) Scheduler APScheduler (scheduler.py)
+- BackgroundScheduler configure avec:
+  - scrape_all() toutes les 24h
+  - update_stats() toutes les heures
+- Au demarrage:
+  - si base vide -> scrape_all() immediat
+  - sinon -> update_stats()
+- Arret propre avec atexit (shutdown du scheduler).
+
+14) API Flask (app.py)
+- CORS actif pour: http://localhost:5173
+- Endpoints implementes:
+  - GET /api/articles?region=&theme=&limit=
+  - GET /api/articles/<id>
+  - GET /api/stats
+  - GET /api/alerts
+  - POST /api/scrape (lancement en arriere-plan via thread daemon)
+  - GET /api/health
+- Initialisation protegee (DB + scheduler une seule fois).
+- Lancement serveur en debug=False pour eviter le reloader multiple.
+
+15) Dependances backend (requirements.txt)
+- flask
+- flask-cors
+- requests
+- beautifulsoup4
+- apscheduler
+- lxml
+
+16) Validations backend effectuees
+- Installation deps dans venv backend:
+  /home/nect/Zürich/backend/.venv
+- Verification compilation:
+  python -m compileall app.py database.py classifier.py scraper.py scheduler.py -> OK
+- Verification import modules -> OK
+- Test endpoints (health/articles/stats/alerts/scrape) -> OK
+- Test scraping global -> OK avec gestion des sources bloquees/restrictives.
+
+17) Mise en oeuvre finale des 4 pages (remplacement des placeholders)
+- Les 4 pages placeholders ont ete remplacees par des pages fonctionnelles dans src/App.jsx:
+  - /carte
+  - /donnees
+  - /alertes
+  - /rapports
+
+18) Page /carte
+- Integration de react-leaflet + leaflet.
+- Chargement du CSS Leaflet via CDN (sans ajout de librairie de carte supplementaire).
+- Carte mondiale centree sur (20, 0), zoom 2.
+- Affichage de marqueurs circulaires par pays avec couleur selon niveau:
+  critique #b00020, eleve #b37a00, modere #2b4ea1, info #4b4b4b.
+- Popup au clic: pays, nombre d'articles, niveau dominant, titre du dernier article.
+- Fond de carte sobre CartoDB Positron.
+- Legende en bas a gauche avec les 4 niveaux.
+
+19) Page /donnees
+- Tableau principal avec colonnes:
+  Pays | Theme | Niveau | Source | Date.
+- Tri cliquable sur toutes les colonnes (asc/desc).
+- Recherche texte libre sur titre + pays + source.
+- Pagination implementee: 20 articles par page.
+- Graphique sans librairie externe: barres CSS pures par theme
+  (Dechets, Air, Eau, Sols), largeur proportionnelle au volume.
+
+20) Page /alertes
+- 3 sections implementees:
+  a) Alertes critiques (cards bordure gauche rouge)
+  b) Alertes elevees (cards bordure gauche ambre)
+  c) Historique complet compact trie par date avec badge niveau colore
+- Bouton "Declencher un scraping" branche sur POST /api/scrape.
+- Etat visuel pendant appel: "Scraping en cours...".
+
+21) Page /rapports
+- Formulaire de generation:
+  region (select), theme (select), periode (7j/30j/tout), titre du rapport.
+- Previsualisation dynamique des articles filtres.
+- Resume calcule: nombre d'articles, nombre de pays, nombre de sources.
+- Repartition par niveau affichee.
+- Export Markdown:
+  bouton "Copier en Markdown" via presse-papier.
+- Export CSV:
+  bouton "Exporter CSV" (colonnes: titre, source, pays, theme, niveau, date, description).
+
+22) i18n et fallback API
+- Ajout des cles de traduction manquantes pour FR / EN / ES / AR.
+- Chaque page charge ses donnees au montage depuis l'API.
+- Fallback sur donnees statiques en cas d'indisponibilite API.
+
+23) Styles
+- Mise a jour complete de src/App.module.css avec tous les styles des 4 pages,
+  en conservant l'identite visuelle noir/blanc/serif demandee.
+
+24) Routing et qualite
+- Navigation alignee sur les chemins: /, /carte, /donnees, /alertes, /rapports.
+- Build frontend valide: npm run build -> OK.
+- Lint frontend valide: npm run lint -> OK.
+- Ajustement ESLint pour ignorer backend/.venv afin d'eviter les faux positifs externes.
+
+25) Preparation du backend Flask pour deploiement Render.com
+- Fichier cree: backend/render.yaml
+  services:
+    - type: web
+      name: zurich-backend
+      env: python
+      buildCommand: pip install -r requirements.txt
+      startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
+      envVars:
+        - key: PYTHON_VERSION
+          value: 3.10.0
+
+- Fichier cree: backend/Procfile
+  web: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2
+
+- Dependances backend mises a jour:
+  - Ajout de "gunicorn" dans backend/requirements.txt
+
+- backend/app.py adapte pour production:
+  - import os ajoute
+  - Port dynamique via variable d'environnement:
+      port = int(os.environ.get('PORT', 5000))
+      app.run(host='0.0.0.0', port=port, debug=False)
+  - CORS configurable par variable d'environnement:
+      ALLOWED_ORIGINS = os.environ.get('ALLOWED_ORIGINS', 'http://localhost:5173').split(',')
+      CORS(app, origins=ALLOWED_ORIGINS)
+
+- backend/database.py adapte pour Render:
+  - import os ajoute
+  - DB_PATH configurable par variable d'environnement:
+      DB_PATH = os.environ.get('DB_PATH', os.path.join(os.path.dirname(__file__), 'zürich.db'))
+  - Connexion SQLite basee sur DB_PATH
+
+26) Validation locale du deploiement
+- Installation locale de gunicorn dans .venv: OK
+- Lancement backend avec gunicorn:
+  gunicorn app:app --bind 0.0.0.0:5000 --workers 2
+- Test endpoint sante:
+  curl http://localhost:5000/api/health -> status: ok
+
+27) GitHub
+- Commit cree:
+  efb6023 - chore: prepare backend for Render deployment
+- Push effectue vers GitHub:
+  origin/main -> SUCCES
+
+28) Submodule Git casse (fix)
+- Suppression du submodule z-rich cassé via:
+  git rm --cached z-rich
+  git config -f .gitmodules --remove-section submodule.z-rich
+  rm -rf .git/modules/z-rich z-rich
+- Commit cree: 206e6d8 - fix: remove broken z-rich submodule
+- Push effectue vers master -> SUCCES
+
+29) FONCTIONNALITE 1 : Lecteur d'article integre avec iframe
+- Ajout d'un etat global dans App.jsx:
+  const [articleOuvert, setArticleOuvert] = useState(null)
+- Creation du composant LecteurArticle:
+  - Affiche un iframe fullscreen overlay avec header personnalise
+  - Source, titre et actions (ouvrir en nouvel onglet, fermer)
+  - Gestion du blocage d'iframe par les sites (X-Frame-Options):
+    si iframe bloquee -> affiche message sobre + lien direct
+  - Sandbox: allow-scripts allow-same-origin allow-popups
+- Modification d'ArticleTop et ArticleRow:
+  - Titres rendus cliquables (cursor: pointer)
+  - onClick declenche setArticleOuvert({url, titre, source})
+- Styles CSS complets dans App.module.css:
+  .lecteurOverlay, .lecteurHeader, .lecteurMeta, .lecteurSource, .lecteurTitre,
+  .lecteurActions, .lecteurExterne, .lecteurFermer, .lecteurIframe, .lecteurBloque
+- LecteurArticle integre dans le rendu principal avant footer
+
+30) FONCTIONNALITE 2 : Images par defaut thematiques
+- Creation de fonction getImageParDefaut(theme):
+  - waste: icone poubelle/dechets
+  - air: icone nuage/fumee
+  - water: icone goutte/vague
+  - soil: icone terre/feuille
+  - default: icone globe
+- SVG inline 40x40px, niveaux de gris, fond #f5f5f5
+- Modification d'ArticleThumbnail:
+  - si imageUrl existe -> affiche l'image
+  - sinon -> affiche SVG thematique du theme de l'article
+  - utilise dangerouslySetInnerHTML pour renderiser SVG
+
+31) Migration base de donnees
+- Creation de backend/migrate.py:
+  - Ajoute colonne url TEXT a la table articles
+  - Gestion des erreurs (colonne deja existante)
+  - Execution: python3 backend/migrate.py -> SUCCESS
+- Modification de database.py:
+  - Colonne url ajoutee lors de CREATE TABLE IF NOT EXISTS
+  - INSERT incluant url parametre
+  - SELECT dans get_articles() et get_article_by_id() incluant url
+- Modification de scraper.py:
+  - Fonction _build_article_dict() accepte param url
+  - scrape_unep() extrait link depuis RSS et href fallback page
+  - URL passee en parametre lors creation articles
+- Modification d'App.jsx:
+  - Articles statiques ARTICLES[] incluent url pour test local
+  - Exemples: https://www.reuters.com, https://www.lemonde.fr, etc.
+
+32) Git & GitHub - NOUVELLES FONCTIONNALITES
+- Commit cree: ef6b1dd - feat: article reader iframe + thematic images
+  Details du commit:
+    - Add article reader iframe that opens on title click
+    - Add thematic placeholder images (waste, air, water, soil)
+    - Add url field to articles database
+    - Implement LecteurArticle component with fallback for blocked iframes
+    - Add getImageParDefaut function with SVG icons
+    - Modify ArticleTop and ArticleRow for clickable titles
+- Push effectue vers master -> SUCCES
+- Branche locale synchronisee avec origin/master
